@@ -37,14 +37,29 @@ const storeSchema = new mongoose.Schema({
   photo: String
 });
 
-storeSchema.pre("save", function(next) {
+storeSchema.pre("save", async function(next) {
   if (!this.isModified("name")) {
     next(); //skip it
     return; //stop this function from runing
   }
   this.slug = slug(this.name);
+  //find others that have a slug of the same
+  const slugRegEx = new RegExp(`^(${this.slug})((-[0-9]*$)?)$`, "i");
+  const storesWithSlug = await this.constructor.find({ slug: slugRegEx });
+  if (storesWithSlug.length) {
+    this.slug = `${this.slug}-${storesWithSlug.length + 1}`;
+  }
   next();
   //todo make more resilant so slugs are unique
 });
+
+storeSchema.statics.getTagsList = function() {
+  return this.aggregate([
+    { $unwind: "$tags" },
+    { $group: { _id: "$tags", count: { $sum: 1 } } },
+    //1 ascending -1 descending
+    { $sort: { count: -1 } }
+  ]);
+};
 
 module.exports = mongoose.model("Store", storeSchema);
