@@ -1,17 +1,10 @@
-const nodemailer = require("nodemailer");
 const pug = require("pug");
 const juice = require("juice");
 const htmlToText = require("html-to-text");
 const promisify = require("es6-promisify");
+const postmark = require("postmark");
 
-const transport = nodemailer.createTransport({
-  host: process.env.MAIL_HOST,
-  port: process.env.MAIL_PORT,
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS
-  }
-});
+const client = new postmark.ServerClient(process.env.MAIL_POSTMARK);
 
 const generateHTML = (filename, options = {}) => {
   const html = pug.renderFile(
@@ -23,16 +16,16 @@ const generateHTML = (filename, options = {}) => {
 };
 
 exports.send = async options => {
-  const html = generateHTML(options.filename, options);
-  const text = htmlToText.fromString(html);
+  const HtmlBody = generateHTML(options.filename, options);
+  const TextBody = htmlToText.fromString(HtmlBody);
 
   const mailOptions = {
-    from: `Jake Fanelli <jxf6552@rit.edu`,
-    to: options.user.email,
-    subject: options.subject,
-    html,
-    text
+    From: `Jake Fanelli <jxf6552@rit.edu>`,
+    To: options.user.email,
+    Subject: options.subject,
+    HtmlBody,
+    TextBody
   };
-  const sendMail = promisify(transport.sendMail, transport);
-  return sendMail(mailOptions);
+  const sendEmail = promisify(client.sendEmail, client);
+  return sendEmail(mailOptions);
 };
